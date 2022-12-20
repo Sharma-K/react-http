@@ -1,4 +1,4 @@
-import React, {useState,useEffect} from 'react';
+import React, {useState,useEffect, useCallback} from 'react';
 
 import MoviesList from './components/MoviesList';
 import './App.css';
@@ -7,18 +7,25 @@ function App() {
 
   const [movies, setMovies] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(()=>{
-      MoviesHandler()
-},[])
- async function MoviesHandler(){
+      MoviesHandler();
+},[]);
+
+//useCallback is used to call the function when there is change in them
+ const MoviesHandler = useCallback(async()=>{
+
+  setError(null);
 
   setLoading(true);
 
-    const response =  await fetch('https://swapi.dev/api/films/');
+  try
+    {
+      const response =  await fetch('https://swapi.dev/api/films/');
 
     const data = await response.json();
-    console.log(data.results);
+    
 
     const transformedMovies = data.results.map(movie=> {
       return {
@@ -29,8 +36,12 @@ function App() {
       }
     })
     setMovies(transformedMovies);
+  }catch(error)
+  {
+    setError('Something Went Wrong');
+  }
     setLoading(false);
- }
+ })
 
   return (
     <React.Fragment>
@@ -38,8 +49,10 @@ function App() {
         <button onClick={MoviesHandler}>Fetch Movies</button>
       </section>
       <section>
-        {loading && <p>Loading...</p> }
-        {!loading && <MoviesList movies={movies} />}
+        
+        {loading && !error && <p>Loading...</p> }
+        {!loading && !error && <MoviesList movies={movies} />}
+        {error && <p>{error}</p> }
       </section>
     </React.Fragment>
   );

@@ -1,59 +1,82 @@
-import React, {useState,useEffect, useCallback} from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 import MoviesList from './components/MoviesList';
+import AddMovie from './components/AddMovie';
 import './App.css';
+import { keyboard } from '@testing-library/user-event/dist/keyboard';
 
 function App() {
-
   const [movies, setMovies] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  useEffect(()=>{
-      MoviesHandler();
-},[]);
-
-//useCallback is used to call the function when there is change in them
- const MoviesHandler = useCallback(async()=>{
-
-  setError(null);
-
-  setLoading(true);
-
-  try
-    {
-      const response =  await fetch('https://swapi.dev/api/films/');
-
-    const data = await response.json();
-    
-
-    const transformedMovies = data.results.map(movie=> {
-      return {
-        id: movie.episode_id,
-        title: movie.title,
-        releaseDate: movie.release_date,
-        openingText: movie.opening_crawl
+  const fetchMoviesHandler = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await fetch('https://react-http-b6a53-default-rtdb.firebaseio.com/movies.json');
+      if (!response.ok) {
+        throw new Error('Something went wrong!');
       }
-    })
-    setMovies(transformedMovies);
-  }catch(error)
-  {
-    setError('Something Went Wrong');
+
+      const data = await response.json();
+      const newMovies = [];
+
+      for(const key in data)
+      {
+        newMovies.push({
+            id: key,
+            title: data[key].title,
+            openingText: data[key].openingText,
+            releaseDate: data[key].releaseDate 
+          })
+      }
+
+      setMovies(newMovies);
+    } catch (error) {
+      setError(error.message);
+    }
+    setIsLoading(false);
+  }, []);
+
+  useEffect(() => {
+    fetchMoviesHandler();
+  }, [fetchMoviesHandler]);
+
+  async function addMovieHandler(movie) {
+    const response = await fetch('https://react-http-b6a53-default-rtdb.firebaseio.com/movies.json',{
+      method:'POST',
+      body: JSON.stringify(movie),
+      headers:{
+        'Content-type': 'application/json'
+      }
+    });
+    const data = await response.json();
   }
-    setLoading(false);
- })
+
+  let content = <p>Found no movies.</p>;
+
+  if (movies.length > 0) {
+    content = <MoviesList movies={movies} />;
+  }
+
+  if (error) {
+    content = <p>{error}</p>;
+  }
+
+  if (isLoading) {
+    content = <p>Loading...</p>;
+  }
 
   return (
     <React.Fragment>
       <section>
-        <button onClick={MoviesHandler}>Fetch Movies</button>
+        <AddMovie onAddMovie={addMovieHandler} />
       </section>
       <section>
-        
-        {loading && !error && <p>Loading...</p> }
-        {!loading && !error && <MoviesList movies={movies} />}
-        {error && <p>{error}</p> }
+        <button onClick={fetchMoviesHandler}>Fetch Movies</button>
       </section>
+      <section>{content}</section>
     </React.Fragment>
   );
 }
